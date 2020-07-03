@@ -121,7 +121,7 @@ class LernplattformDownloadAcceptor:
                 res = activity.download(driver, auth)
             except UnsupportedActivityException:
                 logging.warning(f'Cannot download activity {activity_name}: '
-                                f'its type ({activity_type})'
+                                f'its type ({activity_type}) '
                                 'is unsupported.')
                 return
 
@@ -261,28 +261,22 @@ if __name__ == '__main__':
                         dest='config',
                         help=('YAML file from which the scraper will derive'
                               'which courses and subjects to visit.'))
-    parser.add_argument('-d', '--download-out',
-                        dest='dl_out',
-                        required=False)
 
     parser.add_argument('-L', '--action-list',
                         dest='action_list',
                         required=False,
                         action='store_true',
-                        help='List activities and their courses to stdout?')
+                        help='List activities and their courses to stdout')
     parser.add_argument('-D', '--action-download',
                         dest='action_download',
-                        action='store_true',
+                        metavar='OUT',
                         required=False,
-                        help='Download activities that don\'t exist in -d')
+                        help='Download activities to OUT')
 
     args = parser.parse_args()
 
     if not (args.action_download or args.action_list):
         sys.exit('Specify at least either -D or -L')
-
-    if args.action_download and not args.dl_out:
-        sys.exit('-D requires -d')
 
     creds = json.load(args.credfile)
     config = yaml.safe_load(args.config)
@@ -303,8 +297,9 @@ if __name__ == '__main__':
             lister = LernplattformListerAcceptor()
             acceptors.add_acceptor(lister)
 
-        if args.action_download:
-            downloader = LernplattformDownloadAcceptor(args.dl_out, dl_dir)
+        if args.action_download is not None:
+            downloader = LernplattformDownloadAcceptor(args.action_download,
+                                                       dl_dir)
             acceptors.add_acceptor(downloader)
 
         mebis_filter = LernplattformFilterVisitor(acceptors, config)
