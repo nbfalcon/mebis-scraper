@@ -5,6 +5,10 @@ class AuthenticationManager:
     def __init__(self):
         self.authl = []
 
+    def acquire_page(self, driver, url):
+        driver.get(url)
+        self.handle_login_page(driver)
+
     def add_authenticator(self, auth):
         self.authl.append(auth)
 
