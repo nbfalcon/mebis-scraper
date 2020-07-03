@@ -159,16 +159,6 @@ class LernplattformScraper:
             except NoSuchElementException:
                 return ''
 
-        def scrape_to_json(self):
-            activities = self.get_activities()
-
-            activity_names = map(
-                lambda el: el.get_name(),
-                activities
-            )
-
-            return list(activity_names)
-
         def visit(self, visitor, auth, driver):
             for activity_id in self.get_activity_ids():
                 activity = LernplattformScraper.Activity.from_id(
@@ -228,31 +218,6 @@ class LernplattformScraper:
         def get_name(self):
             return self.driver.find_element_by_xpath(
                 '//div[@class="course-headline"]').text
-
-        def scrape_current_subcourse(self):
-            result = {}
-
-            subjects = self.get_subjects()
-            for subject in subjects:
-                result[subject.get_name()] = subject.scrape_to_json()
-
-            return result
-
-        def scrape_to_json(self, auth):
-            result = self.scrape_current_subcourse()
-            name = self.get_current_subcourse_name()
-
-            if name is not None:
-                new_result = {name: result}
-                for subcourse in self.list_secondary_sub_courses():
-                    (name, href) = subcourse
-
-                    auth.acquire_page(self.driver, href)
-                    new_result[name] = self.scrape_current_subcourse()
-
-                return new_result
-
-            return result
 
         def visit_subjects(self, visitor, auth):
             for subject_id in self.get_subject_ids():
@@ -356,74 +321,6 @@ class LernplattformScraper:
             course_link_map[course_name] = course_link
 
         return course_link_map
-
-    # def scrape_course(self, link):
-    #     self._acquire_page(link)
-
-    #     # .span12 to skip general
-    #     subjects = self.driver.find_elements_by_css_selector('li.section')
-    #     subjects_res = {}
-    #     for subject in subjects:
-    #         # expand subject
-    #         toggle_buttons = subject.find_elements_by_css_selector(
-    #             'span.toggle_closed')
-    #         for button in toggle_buttons:
-    #             button.click()
-
-    #         # get activities
-    #         activities = subject.find_elements_by_css_selector(
-    #             'span.instancename')
-    #         activities_res = {}
-    #         for activity in activities:
-    #             name = activity.text.split('\n', maxsplit=1)[0]
-    #             link = activity.find_element_by_xpath('..') \
-    #                            .get_attribute('href')
-
-    #             activities_res[name] = link
-
-    #         name = None
-    #         try:
-    #             name = subject.find_element_by_css_selector(
-    #                 '.sectionname').text
-    #         # except general section
-    #         except NoSuchElementException:
-    #             name = ''
-
-    #         subjects_res[name] = activities_res
-
-    #     return subjects_res
-
-    # def scrape_all(self):
-    #     res = {}
-
-    #     courses = self.scrape_courses()
-
-    #     for course in courses.items():
-    #         (course_name, course_link) = course
-    #         course_subjects = self.scrape_course(course_link)
-
-    #         res[course_name] = course_subjects
-
-    #     return res
-
-    def scrape_course(self, url):
-        self._acquire_page(url)
-        course = LernplattformScraper.Course(self.driver)
-
-        return course.scrape_to_json(self.auth)
-
-    def scrape_all(self):
-        res = {}
-
-        courses = self.scrape_courses()
-
-        for course in courses.items():
-            (course_name, course_link) = course
-            course_subjects = self.scrape_course(course_link)
-
-            res[course_name] = course_subjects
-
-        return res
 
     def visit(self, visitor):
         courses = self.scrape_courses()
