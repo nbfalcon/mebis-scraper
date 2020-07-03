@@ -46,6 +46,23 @@ class LernplattformScraper:
             return self.el.find_element_by_class(
                 'contentafterlink').page_source
 
+        def get_complete_button_element(self):
+            self.el.find_element_by_css('button.btn-link.btn')
+
+        def get_complete_button_state(self):
+            btn = self.get_complete_button_element()
+            img = btn.find_element_by_class_name('img')
+
+            alt = img.get_attribute('alt')
+            return alt.startswith('Abgeschlossen')
+
+        def toggle_complete_button(self):
+            self.get_complete_button_element().click()
+
+        def set_complete_button_state(self, state):
+            if state != self.get_complete_button_state():
+                self.toggle_complete_button()
+
         # all Activity instances _may_ be invalidated after a call to this
         # function. Use IDs instead.
         def download(self, driver, auth):
