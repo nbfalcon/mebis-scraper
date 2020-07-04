@@ -1,5 +1,6 @@
 from selenium.common.exceptions import NoSuchElementException
-from .exceptions import UnsupportedActivityException
+from .exceptions import (UnsupportedActivityException,
+                         UncompletableActivityException)
 from contextlib import contextmanager
 
 
@@ -10,9 +11,9 @@ class LernplattformScraper:
         def __init__(self, webelement):
             self.el = webelement
 
-        def from_id(driver, id):
+        def from_id(driver, el_id):
             return LernplattformScraper.Activity(
-                driver.find_element_by_id(id))
+                driver.find_element_by_id(el_id))
 
         def from_element(webelement):
             return LernplattformScraper.Activity(webelement)
@@ -28,7 +29,7 @@ class LernplattformScraper:
 
         def get_download_link(self):
             return self.el.find_element_by_xpath(
-                '//span[contains(@class, "instancename")]/..')
+                './/span[contains(@class, "instancename")]/..')
 
         def get_name(self):
             try:
@@ -40,21 +41,43 @@ class LernplattformScraper:
                         'span.fp-filename'
                     ).text.split('\n', maxsplit=1)[0]
                 except NoSuchElementException:
+                    if self.get_type() == 'modtype_label':
+                        return (self.get_label_element().text
+                                .split('\n', maxsplit=1)[0])
                     return ''
 
         def get_subtext(self):
-            return self.el.find_element_by_class(
-                'contentafterlink').page_source
+            try:
+                return self.el.find_element_by_class_name(
+                    'contentafterlink').get_attribute('outerHTML')
+            except NoSuchElementException:
+                return None
 
         def get_complete_button_element(self):
-            self.el.find_element_by_css('button.btn-link.btn')
+            try:
+                return self.el.find_element_by_css_selector(
+                    'button.btn.btn-link')
+            except NoSuchElementException:
+                raise UncompletableActivityException
 
         def get_complete_button_state(self):
             btn = self.get_complete_button_element()
-            img = btn.find_element_by_class_name('img')
 
+            img = btn.find_element_by_tag_name('img')
             alt = img.get_attribute('alt')
             return alt.startswith('Abgeschlossen')
+
+        def get_complete_button_state_none(self):
+            try:
+                return self.get_complete_button_state()
+            except UncompletableActivityException:
+                return None
+
+        def get_complete_button_state_false(self):
+            try:
+                return self.get_complete_button_state()
+            except UncompletableActivityException:
+                return False
 
         def toggle_complete_button(self):
             self.get_complete_button_element().click()
@@ -67,56 +90,71 @@ class LernplattformScraper:
         # function. Use IDs instead.
         def download(self, driver, auth):
             DOWNLOADERS = {
-                # 'modtype_forum': ?
                 'modtype_resource': self._download_resource,
                 'modtype_folder': self._download_folder,
-                'modtype_label': self._download_page,
+                'modtype_label': self._download_label,
+                'modtype_page': self._download_page,
                 'modtype_url': self._download_link,
             }
 
             try:
-                downloader_fn = DOWNLOADERS[self.get_type()]
+                return DOWNLOADERS[self.get_type()](driver, auth)
             except KeyError:
                 raise UnsupportedActivityException(self.get_type())
-            else:
-                return downloader_fn(driver, auth)
 
         def _download_resource(self, driver, auth):
             self.get_download_link().click()
-            auth.handle_login_page()
+            auth.handle_login_page(driver)
 
             return None
 
+        def find_folder_download_button(el):
+            return el.find_element_by_xpath(
+                ".//input[@value='Verzeichnis herunterladen']")
+
+        def download_folder(el):
+            LernplattformScraper.Activity.find_folder_download_button(el) \
+                                         .click()
+
+        # may change page
         def _download_folder(self, driver, auth):
             try:
-                self.el.find_element_by_xpath(
-                    "//path[text()='Verzeichnis herunterladen']").click()
-                auth.handle_login_page()
+                self.__class__.download_folder(self.el)
+                auth.handle_login_page(driver)
             except NoSuchElementException:
-                nextp = self.get_download_link()
+                old_page = driver.current_url
 
-                nextp.click()
-                auth.handle_login()
+                self.get_download_link().click()
+                auth.handle_login_page(driver)
 
-                self._download_folder(driver, auth)
+                self.__class__.download_folder(driver)
+                auth.handle_login_page(driver)
 
-                driver.back()
+                driver.get(old_page)
 
             return None
 
         def _download_page(self, driver, auth):
-            self.get_download_link().click()
-            auth.handle_login_page()
+            old_page = driver.current_url
 
-            return driver.find_element_by_id(
-                'main-content-wrapper').page_source
+            self.get_download_link().click()
+            auth.handle_login_page(driver)
+
+            res = driver.find_element_by_id(
+                'main-content-wrapper').get_attribute('outerHTML')
+
+            driver.get(old_page)
+
+            return res
 
         def _download_link(self, driver, auth):
             return self.get_download_link().get_attribute('href')
 
+        def get_label_element(self):
+            return self.el.find_element_by_class_name('contentwithoutlink')
+
         def _download_label(self, driver, auth):
-            return self.el.find_element_by_class(
-                'contentwithoutlink').page_source
+            return self.get_label_element().get_attribute('outerHTML')
 
     class Subject:
         def __init__(self, webelement):
@@ -160,11 +198,17 @@ class LernplattformScraper:
                 return ''
 
         def visit(self, visitor, auth, driver):
+            activity_page = driver.current_url
             for activity_id in self.get_activity_ids():
                 activity = LernplattformScraper.Activity.from_id(
-                    self.el, activity_id)
+                    driver, activity_id)
 
                 visitor.accept_activity(activity, auth, driver)
+
+                # The visitor might have executed a page change by downloading
+                # the activity
+                if driver.current_url != activity_page:
+                    driver.get(activity_page)
 
     class Course:
         def __init__(self, driver):
@@ -206,8 +250,7 @@ class LernplattformScraper:
 
             try:
                 current_course = self.driver.find_element_by_xpath(
-                    '//ul[contains(@class, "nav-tabs")]/li[@class="active"]'
-                )
+                    '//ul[contains(@class, "nav-tabs")]/li[@class="active"]')
 
                 name = current_course.find_element_by_css_selector('span').text
             except NoSuchElementException:
@@ -329,10 +372,8 @@ class LernplattformScraper:
         for course in courses.items():
             (name, href) = course
 
-            if not visitor.enter_course(name):
-                continue
+            if visitor.enter_course(name):
+                self._acquire_page(href)
+                course_handler.visit(visitor, self.auth)
 
-            self._acquire_page(href)
-            course_handler.visit(visitor, self.auth)
-
-            visitor.exit_course()
+                visitor.exit_course()

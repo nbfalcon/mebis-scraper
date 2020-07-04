@@ -1,27 +1,43 @@
 import logging
-import os
 import os.path
 import shutil
 
-from .exceptions import UnsupportedActivityException
+from .exceptions import (UncompletableActivityException,
+                         UnsupportedActivityException)
+from selenium_scraping.download import await_download
 
 
-class LernplattformListerAcceptor:
-    def __init__(self):
-        self.res = {}
+class LernplattformCompletionFilterAcceptor:
+    def __init__(self, acceptor, desired_completion_state=False):
+        self.acceptor = acceptor
+        self.complete_filter = desired_completion_state
 
     def accept_activity(self, course, subcourse, subj, activity, auth, driver):
-        name = activity.get_name()
+        if activity.get_complete_button_state_false() == self.complete_filter:
+            self.acceptor.accept_activity(course, subcourse, subj, activity,
+                                          auth, driver)
 
-        if subcourse is None:
-            self.res \
-                .setdefault(course, {}) \
-                .setdefault(subj, []).append(name)
-        else:
-            self.res \
-                .setdefault(course, {}) \
-                .setdefault(subcourse, {}) \
-                .setdefault(subj, []).append(name)
+
+class LernplattformCompletionSyncAcceptor:
+    def __init__(self, completion_dict):
+        self.completion_dict = completion_dict
+
+    def accept_activity(self, course, subcourse, subj, activity, auth, driver):
+        state = None
+        activity_name = activity.get_name()
+        try:
+            if subcourse is None:
+                state = self.completion_dict[course][subj][activity_name]
+            else:
+                state = (self.completion_dict[course][subcourse][subj]
+                         [activity_name])
+        except KeyError:
+            return  # an unknown activity is normal and shouldn't be changed
+
+        try:
+            activity.set_complete_button_state(state)
+        except UncompletableActivityException:
+            logging.warning(f'{activity_name} cannot be completed')
 
 
 class LernplattformDownloadAcceptor:
@@ -46,6 +62,9 @@ class LernplattformDownloadAcceptor:
         activity_type = activity.get_type()
         target_file = self.make_path(course, subcourse, subj, activity_name)
 
+        logging.info(f'Download activity \'{activity_name}\''
+                     '({activity_type})')
+
         if not os.path.exists(target_file):
             try:
                 res = activity.download(driver, auth)
@@ -55,17 +74,58 @@ class LernplattformDownloadAcceptor:
                                 'is unsupported.')
                 return
 
-            os.makedirs(os.path.dirname(target_file))
+            os.makedirs(os.path.dirname(target_file), exist_ok=True)
 
             if res is None:
+                await_download(self.dl_dir)
+
                 download_file = os.listdir(self.dl_dir)[0]
-                shutil.move(download_file, target_file)
+                src_file = os.path.join(self.dl_dir, download_file)
+
+                shutil.move(src_file, target_file)
             else:
                 with open(target_file, 'w') as out:
                     out.write(res)
 
-            logging.info(f'Downloaded activity \'{activity_name}\''
-                         '({activity_type})')
+
+class LernplattformListerAcceptor:
+    def __init__(self):
+        self.result = {}
+
+    def accept_activity(self, course, subcourse, subj, activity, auth, driver):
+        res = {
+            'name': activity.get_name(),
+            'type': activity.get_type(),
+            'complete': activity.get_complete_button_state_none(),
+            'subtext': activity.get_subtext()
+        }
+
+        if subcourse is None:
+            self.result \
+                .setdefault(course, {}) \
+                .setdefault(subj, []).append(res)
+        else:
+            self.result \
+                .setdefault(course, {}) \
+                .setdefault(subcourse, {}) \
+                .setdefault(subj, []).append(res)
+
+
+class LernplattformFlatListerAcceptor:
+    def __init__(self):
+        self.result = []
+
+    def accept_activity(self, course, subcourse, subj, activity, auth, driver):
+        self.result.append({
+            'name': activity.get_name(),
+            'type': activity.get_type(),
+            'complete': activity.get_complete_button_state_none(),
+            'subtext': activity.get_subtext(),
+
+            'course': course.get_name(),
+            'subcourse': subcourse.get_name(),
+            'subject': subj.get_name()
+        })
 
 
 class LernplattformCompositeAcceptor:

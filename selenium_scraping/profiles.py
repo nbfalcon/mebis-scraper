@@ -3,6 +3,7 @@ import tempfile
 from selenium import webdriver
 from selenium.webdriver.firefox.options import Options as FirefoxOptions
 
+
 def make_firefox_profile():
     AUTODOWNLOAD_MIMETYPES = [
         "audio/aac",
@@ -87,15 +88,19 @@ def make_firefox_profile():
         'browser.download.manager.closeWhenDone': False,
         'browser.download.manager.focusWhenStarting': False,
 
+        'pdfjs.disabled': True,
+
         'browser.download.dir': dl_dir,
     }
 
     profile = webdriver.FirefoxProfile()
     for (pref, value) in prefs.items():
         profile.set_preference(pref, value)
+    profile.accept_untrusted_certs = False
 
     options = FirefoxOptions()
     options.headless = True
+    options.accept_insecure_certs = False
 
     return (dl_dir, webdriver.Firefox(firefox_profile=profile,
-                                      firefox_options=options))
+                                      options=options))
