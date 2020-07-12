@@ -2,9 +2,7 @@
 import json
 import sys
 import logging
-
-
-logging.basicConfig(level='INFO')
+import argparse
 
 
 def walk_json(visitor, obj):
@@ -32,7 +30,8 @@ class ActivityTupleBuilderVisitor:
     def enter_dict(self, obj):
         # (course, subcourse?, subject)
         if len(self._stack) >= 3:
-            logging.warning('Schema error: visitor course-dump too deep')
+            logging.getLogger('coursedump schema') \
+                   .warning('Visitor course-dump too deep')
             return False
 
         self._stack.append(None)
@@ -53,8 +52,8 @@ class ActivityTupleBuilderVisitor:
             for activity in obj:
                 self._accept_activity(activity)
         else:
-            logging.warning(
-                'Schema error: course-dump depth incorrect')
+            logging.getLogger('coursedump schema') \
+                   .warning('Course-dump depth incorrect')
 
         return False
 
@@ -63,7 +62,8 @@ class ActivityTupleBuilderVisitor:
 
     def _accept_activity(self, activity):
         if not isinstance(activity, dict):
-            logging.warning('Schema error: activities must be dicts')
+            logging.getLogger('coursedump schema') \
+                .warning('Activities must be dicts')
             return
 
         course = self._stack[0]
@@ -77,18 +77,23 @@ class ActivityTupleBuilderVisitor:
         self.result.append(activity)
 
     def accept_atom(self, _):
-        logging.warning('Schema error: illegal bare atom')
+        logging.getLogger('coursedump schema') \
+               .warning('Illegal bare atom')
 
 
 if __name__ == '__main__':
-    if len(sys.argv) != 2:
-        print(f'{sys.argv[0]}: usage: {sys.argv[0]} [file]', file=sys.stderr)
-        exit(1)
+    logging.basicConfig(level='INFO')
 
-    with open(sys.argv[1], 'r') as input_file:
-        coursedump = json.load(input_file)
-        visitor = ActivityTupleBuilderVisitor()
+    parser = argparse.ArgumentParser()
 
-        walk_json(visitor, coursedump)
+    parser.add_argument('coursedump', type=argparse.FileType('r'), nargs='?',
+                        default=sys.stdin)
 
-        json.dump(visitor.result, sys.stdout, indent=4)
+    args = parser.parse_args()
+
+    coursedump = json.load(args.coursedump)
+    visitor = ActivityTupleBuilderVisitor()
+
+    walk_json(visitor, coursedump)
+
+    json.dump(visitor.result, sys.stdout, indent=4)

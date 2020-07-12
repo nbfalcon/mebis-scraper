@@ -3,6 +3,7 @@ import argparse
 import json
 import sys
 import yaml
+import logging
 
 from mebis_scraper.scrapers import LernplattformScraper
 from mebis_scraper.visitors import LernplattformFilterVisitor
@@ -18,6 +19,8 @@ from selenium_scraping.profiles import make_firefox_profile
 
 
 if __name__ == '__main__':
+    logging.basicConfig(level=logging.INFO)
+
     parser = argparse.ArgumentParser(
         description='Lists the "Mebis Lernplattform" courses for some user.')
 

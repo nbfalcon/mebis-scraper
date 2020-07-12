@@ -94,13 +94,17 @@ class LernplattformScraper:
                 'modtype_folder': self._download_folder,
                 'modtype_label': self._download_label,
                 'modtype_page': self._download_page,
-                'modtype_url': self._download_link,
+                'modtype_url': self._download_link
             }
 
+            el_id = self.el.get_attribute('id')
             try:
-                return DOWNLOADERS[self.get_type()](driver, auth)
+                res = DOWNLOADERS[self.get_type()](driver, auth)
             except KeyError:
                 raise UnsupportedActivityException(self.get_type())
+            else:
+                self.el = driver.find_element_by_id(el_id)
+                return res
 
         def _download_resource(self, driver, auth):
             self.get_download_link().click()
@@ -140,8 +144,7 @@ class LernplattformScraper:
             self.get_download_link().click()
             auth.handle_login_page(driver)
 
-            res = driver.find_element_by_id(
-                'main-content-wrapper').get_attribute('outerHTML')
+            res = driver.find_element_by_class_name('generalbox').get_attribute('outerHTML')
 
             driver.get(old_page)
 

@@ -1,0 +1,13 @@
+#!/usr/bin/bash
+
+_WD="$HOME/School/(Corona)"
+
+coursedump2overlay.py "$_WD/completion-overlay.json" | \
+    LernplattformScraper.py \
+        -c "$_WD/config/mebis-scraper-config.yml" \
+        -l "$_WD/config/mebis-credentials.json" \
+        -u -D "$_WD/download/" \
+        -S - \
+        -f -L > "$_WD/courses.json" # 2> "$_WD/log/mebis-scraper.log"
+
+regen-tasks

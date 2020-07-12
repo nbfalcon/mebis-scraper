@@ -1,0 +1,8 @@
+#!/usr/bin/bash
+
+_WD="$HOME/School/(Corona)"
+
+coursedump2overlay.py "$_WD/completion-overlay.json" | \
+    patch_overlay.py - "$_WD/courses.json" | \
+    deflatten_coursedump.py | \
+    coursedump2org.py -w "$_WD/work" -d "$_WD/download" - > "$_WD/tasks.org"
