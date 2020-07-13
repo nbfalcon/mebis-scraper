@@ -2,6 +2,7 @@ from selenium.common.exceptions import NoSuchElementException
 from .exceptions import (UnsupportedActivityException,
                          UncompletableActivityException)
 from contextlib import contextmanager
+import logging
 
 
 class LernplattformScraper:
@@ -346,8 +347,12 @@ class LernplattformScraper:
         self._acquire_page(self.lernplattform_url)
 
         # span inside a logout link
-        self.driver.find_element_by_xpath(
-            "//span[text() = 'Logout']/..").click()
+        try:
+            self.driver.find_element_by_xpath(
+                "//span[text() = 'Logout']/..").click()
+        except NoSuchElementException:
+            logging.getLogger('LernplattformScraper') \
+                   .warning('Logout failed')
 
     def scrape_courses(self):
         self._acquire_page(self.lernplattform_url)
