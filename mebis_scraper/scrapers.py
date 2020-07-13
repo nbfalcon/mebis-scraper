@@ -353,6 +353,9 @@ class LernplattformScraper:
         except NoSuchElementException:
             logging.getLogger('LernplattformScraper') \
                    .warning('Logout failed')
+            return False
+
+        return True
 
     def scrape_courses(self):
         self._acquire_page(self.lernplattform_url)
@@ -365,9 +368,6 @@ class LernplattformScraper:
 
             course_name = course.text
             course_link = link_tag.get_attribute('href')
-
-            # if course_name != 'Klasse 9 m':
-            #     continue  # HACK: DEBUG:
 
             course_link_map[course_name] = course_link
 
