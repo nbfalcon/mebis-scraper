@@ -44,6 +44,11 @@ if __name__ == '__main__':
                         action='store_true',
                         dest='list_flat',
                         help='List activities in the flat format')
+    parser.add_argument('--selenium-debug',
+                        action='store_false',
+                        default=True,
+                        dest='selenium_headless',
+                        help='Show the browser window')
 
     parser.add_argument('-L', '--action-list',
                         dest='action_list',
@@ -76,7 +81,7 @@ if __name__ == '__main__':
     sauth = MebisSAMLAuthenticator(username, password)
     authm.add_authenticator(sauth)
 
-    (dl_dir, _driver) = make_firefox_profile()
+    (dl_dir, _driver) = make_firefox_profile(args.selenium_headless)
     with _driver as driver, \
          LernplattformScraper.create(driver, authm) as scraper:
         acceptors = LernplattformCompositeAcceptor()

@@ -8,6 +8,7 @@ coursedump2overlay.py "$_WD/completion-overlay.json" | \
         -l "$_WD/config/mebis-credentials.json" \
         -u -D "$_WD/download/" \
         -S - \
-        -f -L > "$_WD/courses.json" # 2> "$_WD/log/mebis-scraper.log"
+        -f -L \
+        "$@" > "$_WD/courses.json" # 2> "$_WD/log/mebis-scraper.log"
 
 regen-tasks

@@ -4,7 +4,7 @@ from selenium import webdriver
 from selenium.webdriver.firefox.options import Options as FirefoxOptions
 
 
-def make_firefox_profile():
+def make_firefox_profile(headless=True):
     AUTODOWNLOAD_MIMETYPES = [
         "audio/aac",
         "application/x-abiword",
@@ -99,7 +99,7 @@ def make_firefox_profile():
     profile.accept_untrusted_certs = False
 
     options = FirefoxOptions()
-    options.headless = True
+    options.headless = headless
     options.accept_insecure_certs = False
 
     return (dl_dir, webdriver.Firefox(firefox_profile=profile,
