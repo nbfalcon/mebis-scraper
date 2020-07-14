@@ -145,7 +145,8 @@ class LernplattformScraper:
             self.get_download_link().click()
             auth.handle_login_page(driver)
 
-            res = driver.find_element_by_class_name('generalbox').get_attribute('outerHTML')
+            res = driver.find_element_by_class_name('generalbox') \
+                        .get_attribute('outerHTML')
 
             driver.get(old_page)
 
