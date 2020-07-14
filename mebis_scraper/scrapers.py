@@ -344,7 +344,9 @@ class LernplattformScraper:
         return self.driver.page_source()
 
     def logout(self):
-        self._acquire_page(self.lernplattform_url)
+        self.driver.get(self.lernplattform_url)
+        if self.auth.is_login_page(self.driver):
+            return True  # no need to log back in just to log out
 
         # span inside a logout link
         try:
