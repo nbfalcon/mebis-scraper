@@ -92,4 +92,8 @@ specified by this variable will be opened."
   (find-file mebis-scraper-tasks-file)
   (mebis-scraper-tasks-export-mode 1))
 
+(defun mebis-scraper-open-tasks-buffer-noselect ()
+  (with-current-buffer (find-file-noselect mebis-scraper-tasks-file)
+    (mebis-scraper-tasks-export-mode 1)))
+
 (provide 'mebis-scraper)
