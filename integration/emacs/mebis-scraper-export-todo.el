@@ -66,8 +66,8 @@
   :init-value nil
   :lighter nil
   (if mebis-scraper-tasks-export-mode
-      (add-hook 'after-save-hook 'mebis-scraper-export nil t)
-    (remove-hook 'after-save-hook 'mebis-scraper-export t)))
+      (add-hook 'after-save-hook #'mebis-scraper-export nil t)
+    (remove-hook 'after-save-hook #'mebis-scraper-export t)))
 
 (defcustom mebis-scraper-todo-export-file nil
   "This variable specifies the json file to which the completion
