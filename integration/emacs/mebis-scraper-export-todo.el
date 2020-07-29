@@ -13,6 +13,7 @@
 
 (defun org-get-link-content (link)
   (replace-regexp-in-string "\\[\\[\\(.*\\)\\]\\[\\(.*\\)\\]\\]" "\\2" link))
+
 (defun mebis-scraper-element-to-locator (headline)
   (let ((parents (org-element-get-parents headline))
         (activity (org-get-link-content
