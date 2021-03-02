@@ -11,36 +11,35 @@
 (require 'org-element)
 (require 'json)
 
-(eval-when-compile
-  (require 'cl-macs))
-
 (defun mebis-scraper--title-lineage (headline)
   "Return HEADLINE's and its parents' titles.
 HEADLINE shall be an org-element headline."
-  (cl-loop for hl in (org-element-lineage headline)
-           and title = (org-element-property :title hl)
-           if title collect title))
+  (delq nil (mapcar (apply-partially #'org-element-property :title)
+                    (org-element-lineage headline))))
 
-(defun mebis-scraper--link-content (link)
-  "Get the content \([[][CONTENT]]) from LINK.
+(defun mebis-scraper--parse-link (link)
+  "Get the content ([[][CONTENT]]) from LINK.
 LINK must be a string."
-  (replace-regexp-in-string "\\[\\[\\(.*\\)\\]\\[\\(.*\\)\\]\\]" "\\2" link))
+  (save-match-data
+    (string-match "\\`\\[\\[\\([^z-a]*\\)\\]\\[\\([^z-a]*\\)\\]\\]\\'" link)
+    (cons (match-string 1) (match-string 2))))
 
 (defun mebis-scraper-element-to-locator (headline)
   "Return a completion-overlay locator alist for HEADLINE.
 HEADLINE must be an org-element headline."
   (let ((parents (mebis-scraper--title-lineage headline))
-        (activity (mebis-scraper--link-content
-                   (org-element-property :title headline))))
-    (cond ((= (length parents) 2) ;; '(course subject)
-           (list (cons "course" (nth 1 parents))
-                 (cons "subject" (nth 0 parents))
-                 (cons "name" activity)))
-          ((= (length parents) 3) ;; '(course subcourse subject)
-           (list (cons "course" (nth 2 parents))
-                 (cons "subcourse" (nth 1 parents))
-                 (cons "subject" (nth 0 parents))
-                 (cons "name" activity))))))
+        (activity (mebis-scraper--parse-link
+                   (cdr (org-element-property :title headline)))))
+    (cons
+     (cons "name" activity)
+     (pcase parents
+       (`(,course ,subject)
+        `(("course" . ,course)
+          ("subject" . ,subject)))
+       (`(,course ,subcourse ,subject)
+        `(("course" . ,course)
+          ("subcourse" . ,subcourse)
+          ("subject" . ,subject)))))))
 
 (defun mebis-scraper--completion-time (headline)
   "Return the time that HEADLINE was completed, or nil.
@@ -48,18 +47,18 @@ The time returned is the original CLOSED timestamp, as a string."
   (when-let ((complete-time (org-element-property :closed headline)))
     (org-element-property :raw-value (org-element-property :closed headline))))
 
-(defun mebis-scraper--is-done (headline)
+(defun mebis-scraper--done-p (headline)
   "Test whether HEADLINE is completed or not.
-Return t if it is and json-false if it is not \(!)."
-  (if (eq (org-element-property :todo-type headline) 'done) t json-false))
+Return t if it is and `:json-false' if it is not (!)."
+  (if (eq (org-element-property :todo-type headline) 'done) t :json-false))
 
 (defun mebis-scraper-element-to-complete (headline)
   "Return an alist specifiying HEADLINE's completion.
 Its complete property holds (as a json boolean) wether HEADLINE
 is completed and its completed property holds the completion
 time (as an org-timestamp string)."
-  (list (cons "complete" (mebis-scraper--is-done headline))
-        (cons "completed" (mebis-scraper--completion-time headline))))
+  `(("complete" . ,(mebis-scraper--done-p headline))
+    ("completed" . ,(mebis-scraper--completion-time headline))))
 
 (defun mebis-scraper-ast-to-complete-overlay (ast)
   "Return a completion-overlay json-tree from AST.
