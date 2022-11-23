@@ -16,7 +16,7 @@ def walk_json(visitor, obj):
     elif isinstance(obj, list):
         if visitor.enter_list(obj):
             for sobj in obj:
-                walk_json(visitor, obj)
+                walk_json(visitor, sobj)
             visitor.exit_list()
     else:
         visitor.accept_atom(obj)
@@ -27,7 +27,7 @@ class ActivityTupleBuilderVisitor:
         self.result = []
         self._stack = []
 
-    def enter_dict(self, obj):
+    def enter_dict(self, _):
         # (course, subcourse?, subject)
         if len(self._stack) >= 3:
             logging.getLogger('coursedump schema') \

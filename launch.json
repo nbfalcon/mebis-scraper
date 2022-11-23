@@ -1,0 +1,25 @@
+{
+    "configurations": [
+        {
+            "name": "LernplatttformScraper.py (remote)",
+            "type": "python",
+            "request": "attach",
+            "connect": {
+                "host": "localhost",
+                "port": 4040
+            }
+        },
+        {
+            "name": "LernplatttformScraper.py",
+            "type": "python",
+            "request": "launch",
+            "dap-compilation": "exit 1",
+            "args": [
+                "-c",
+                "config/mebis-scraper-config.yml",
+                "-l",
+                "config/mebis-credentials.json"
+            ]
+        }
+    ]
+}
